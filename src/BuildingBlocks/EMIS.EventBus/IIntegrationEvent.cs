@@ -1,18 +1,10 @@
 namespace EMIS.EventBus;
 
 /// <summary>
-/// Base interface for integration events.
-/// Integration events are used for communication between microservices.
+/// Base interface for all integration events
 /// </summary>
 public interface IIntegrationEvent
 {
-    /// <summary>
-    /// Unique identifier for the event.
-    /// </summary>
-    string EventId { get; }
-
-    /// <summary>
-    /// When the event was created.
-    /// </summary>
-    DateTime CreationDate { get; }
+    Guid Id { get; set; }
+    DateTime OccurredOn { get; set; }
 }
