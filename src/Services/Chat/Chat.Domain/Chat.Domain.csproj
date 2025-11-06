@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\EMIS.SharedKernel\EMIS.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\EMIS.BuildingBlocks\EMIS.BuildingBlocks.csproj" />
+  </ItemGroup>
+
 </Project>
