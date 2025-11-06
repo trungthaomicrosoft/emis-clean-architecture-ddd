@@ -7,7 +7,37 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- ASP.NET Core -->
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.9" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    
+    <!-- SignalR -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="9.0.0" />
+    
+    <!-- Authentication & Authorization -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+    
+    <!-- MediatR -->
+    <PackageReference Include="MediatR" Version="12.4.1" />
+    
+    <!-- Logging -->
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    
+    <!-- AutoMapper -->
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+    
+    <!-- FluentValidation -->
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chat.Application\Chat.Application.csproj" />
+    <ProjectReference Include="..\Chat.Infrastructure\Chat.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\EMIS.BuildingBlocks\EMIS.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\EMIS.SharedKernel\EMIS.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\EMIS.EventBus\EMIS.EventBus.csproj" />
   </ItemGroup>
 
 </Project>
