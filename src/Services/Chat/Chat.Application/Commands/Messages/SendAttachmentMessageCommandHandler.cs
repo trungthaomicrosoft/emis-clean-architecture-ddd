@@ -1,5 +1,6 @@
 using AutoMapper;
 using Chat.Application.DTOs;
+using Chat.Application.Interfaces;
 using Chat.Domain.Aggregates;
 using Chat.Domain.Entities;
 using Chat.Domain.Enums;
@@ -60,24 +61,36 @@ public class SendAttachmentMessageCommandHandler
                     "You do not have permission to send messages in this conversation", 
                     403);
 
-            // 3. Upload file to storage (MinIO)
+            // 3. Extract file properties
+            // Note: File is object to avoid ASP.NET Core dependency in Application layer
+            // Cast to dynamic to access properties (IFormFile has OpenReadStream, FileName, ContentType)
+            dynamic file = request.File;
+            string fileName = file.FileName;
+            string contentType = file.ContentType;
+            
+            // 4. Upload file to storage (MinIO)
             // File validation happens in FileStorageService
-            var uploadResult = await _fileStorageService.UploadFileAsync(
-                request.File,
-                request.TenantId,
-                request.ConversationId,
-                request.MessageType,
-                cancellationToken);
+            FileUploadResult uploadResult;
+            using (var fileStream = file.OpenReadStream())
+            {
+                uploadResult = await _fileStorageService.UploadFileAsync(
+                    fileStream,
+                    fileName,
+                    contentType,
+                    request.TenantId,
+                    request.ConversationId,
+                    cancellationToken);
+            }
 
             if (!uploadResult.Success)
                 return ApiResponse<MessageDto>.ErrorResult(
                     $"File upload failed: {uploadResult.ErrorMessage}", 
                     400);
 
-            // 4. Create Attachment value object
+            // 5. Create Attachment value object
             var attachment = Attachment.Create(
                 uploadResult.FileName,
-                uploadResult.FileType,
+                uploadResult.ContentType,
                 uploadResult.FileSize,
                 uploadResult.FileUrl,
                 uploadResult.ThumbnailUrl);
@@ -140,32 +153,3 @@ public class SendAttachmentMessageCommandHandler
         }
     }
 }
-
-/// <summary>
-/// Interface for file storage service (MinIO implementation in Infrastructure layer)
-/// Defined here in Application layer (dependency inversion)
-/// </summary>
-public interface IFileStorageService
-{
-    Task<FileUploadResult> UploadFileAsync(
-        object file, // IFormFile - using object to avoid infrastructure dependency
-        Guid tenantId,
-        Guid conversationId,
-        MessageType messageType,
-        CancellationToken cancellationToken);
-}
-
-/// <summary>
-/// Result of file upload operation
-/// </summary>
-public class FileUploadResult
-{
-    public bool Success { get; set; }
-    public string FileName { get; set; } = string.Empty;
-    public string FileType { get; set; } = string.Empty;
-    public long FileSize { get; set; }
-    public string FileUrl { get; set; } = string.Empty;
-    public string? ThumbnailUrl { get; set; }
-    public string? ErrorMessage { get; set; }
-}
-
