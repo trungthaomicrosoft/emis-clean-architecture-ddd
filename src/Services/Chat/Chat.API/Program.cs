@@ -1,6 +1,9 @@
 using Chat.API.Hubs;
 using Chat.Application;
+using Chat.Application.Events;
 using Chat.Infrastructure;
+using EMIS.EventBus;
+using EMIS.EventBus.IntegrationEvents;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -130,6 +133,36 @@ try
     // Add Application and Infrastructure layers
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddIntegrationServices(builder.Configuration);
+
+    // Add Kafka Consumer for consuming integration events
+    builder.Services.AddKafkaConsumer(
+        settings =>
+        {
+            settings.BootstrapServers = builder.Configuration["KafkaSettings:BootstrapServers"] ?? "localhost:9092";
+            settings.GroupId = builder.Configuration["KafkaSettings:GroupId"] ?? "emis-chat-service";
+            settings.ClientId = builder.Configuration["KafkaSettings:ClientId"] ?? "chat-consumer";
+            settings.Topics = builder.Configuration.GetSection("KafkaSettings:Topics").Get<List<string>>() 
+                ?? new List<string> { "emis.student.created", "emis.message.sent" };
+        },
+        consumer =>
+        {
+            // Subscribe to StudentCreatedIntegrationEvent
+            consumer.Subscribe<StudentCreatedIntegrationEvent, 
+                Chat.Application.IntegrationEvents.Handlers.StudentCreatedIntegrationEventHandler>();
+            
+            // Subscribe to MessageSentEvent (internal chat events)
+            consumer.Subscribe<MessageSentEvent,
+                Chat.Application.Events.Handlers.MessageSentEventHandler>();
+        });
+
+    // Add Kafka Producer for publishing events
+    builder.Services.AddKafkaEventBus(settings =>
+    {
+        settings.BootstrapServers = builder.Configuration["KafkaSettings:BootstrapServers"] ?? "localhost:9092";
+        settings.ClientId = builder.Configuration["KafkaSettings:ProducerClientId"] ?? "chat-producer";
+        settings.TopicPrefix = builder.Configuration["KafkaSettings:TopicPrefix"] ?? "emis";
+    });
 
     // Add Health Checks
     builder.Services.AddHealthChecks();

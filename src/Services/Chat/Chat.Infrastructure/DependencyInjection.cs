@@ -169,6 +169,34 @@ public static class DependencyInjection
     }
 
     /// <summary>
+    /// Register HTTP clients for integration with other microservices
+    /// </summary>
+    public static IServiceCollection AddIntegrationServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        // Student Service integration
+        services.AddHttpClient<IStudentIntegrationService, StudentIntegrationService>(client =>
+        {
+            var baseUrl = configuration["IntegrationServices:StudentService:BaseUrl"] 
+                ?? "http://localhost:5002"; // Default Student Service URL
+            client.BaseAddress = new Uri(baseUrl);
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
+        // Teacher Service integration
+        services.AddHttpClient<ITeacherIntegrationService, TeacherIntegrationService>(client =>
+        {
+            var baseUrl = configuration["IntegrationServices:TeacherService:BaseUrl"] 
+                ?? "http://localhost:5003"; // Default Teacher Service URL
+            client.BaseAddress = new Uri(baseUrl);
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
+        return services;
+    }
+
+    /// <summary>
     /// Ensures MongoDB indexes are created on application startup
     /// </summary>
     public static async Task EnsureMongoDbIndexesAsync(this IServiceProvider serviceProvider)

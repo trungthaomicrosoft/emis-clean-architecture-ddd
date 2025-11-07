@@ -2,7 +2,10 @@ using AutoMapper;
 using EMIS.BuildingBlocks.ApiResponse;
 using EMIS.BuildingBlocks.Exceptions;
 using EMIS.BuildingBlocks.MultiTenant;
+using EMIS.EventBus;
+using EMIS.EventBus.IntegrationEvents;
 using MediatR;
+using Microsoft.Extensions.Logging;
 using Student.Application.Commands.Students;
 using Student.Application.DTOs;
 using Student.Domain.Entities;
@@ -21,17 +24,23 @@ public class CreateStudentCommandHandler : IRequestHandler<CreateStudentCommand,
     private readonly IClassRepository _classRepository;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
+    private readonly IKafkaEventBus _eventBus;
+    private readonly ILogger<CreateStudentCommandHandler> _logger;
 
     public CreateStudentCommandHandler(
         IStudentRepository studentRepository,
         IClassRepository classRepository,
         ITenantContext tenantContext,
-        IMapper mapper)
+        IMapper mapper,
+        IKafkaEventBus eventBus,
+        ILogger<CreateStudentCommandHandler> logger)
     {
         _studentRepository = studentRepository;
         _classRepository = classRepository;
         _tenantContext = tenantContext;
         _mapper = mapper;
+        _eventBus = eventBus;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<StudentDetailDto>> Handle(CreateStudentCommand request, CancellationToken cancellationToken)
@@ -156,6 +165,36 @@ public class CreateStudentCommandHandler : IRequestHandler<CreateStudentCommand,
             // Get full student data with parents
             var savedStudent = await _studentRepository.GetByIdWithParentsAsync(student.Id, cancellationToken);
             var result = _mapper.Map<StudentDetailDto>(savedStudent);
+
+            // Publish StudentCreatedIntegrationEvent to Kafka
+            try
+            {
+                var integrationEvent = new StudentCreatedIntegrationEvent(
+                    student.Id,
+                    _tenantContext.TenantId,
+                    classEntity?.Id ?? Guid.Empty,
+                    student.FullName,
+                    savedStudent?.Parents?.Select(p => new ParentInfo(
+                        p.Id,
+                        p.FullName,
+                        p.Relation.ToString()
+                    )).ToList() ?? new List<ParentInfo>(),
+                    Guid.Empty // CreatedBy - you might want to add this to your command
+                );
+
+                await _eventBus.PublishAsync(integrationEvent, cancellationToken);
+                
+                _logger.LogInformation(
+                    "Published StudentCreatedIntegrationEvent for student {StudentId} ({StudentName})",
+                    student.Id, student.FullName);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the request - event publishing is not critical
+                _logger.LogError(ex,
+                    "Failed to publish StudentCreatedIntegrationEvent for student {StudentId}",
+                    student.Id);
+            }
 
             return ApiResponse<StudentDetailDto>.SuccessResult(result);
         }

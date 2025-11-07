@@ -66,7 +66,7 @@ public class RemoveParticipantCommandHandler
             }
 
             // 6. Remove participant
-            conversation.RemoveParticipant(request.UserIdToRemove);
+            conversation.RemoveParticipant(request.UserIdToRemove, request.RequestedBy);
 
             // 7. Save conversation
             await _conversationRepository.UpdateAsync(conversation, cancellationToken);

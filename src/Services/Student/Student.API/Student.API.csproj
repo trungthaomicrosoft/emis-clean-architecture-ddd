@@ -22,6 +22,7 @@
     <ProjectReference Include="..\Student.Application\Student.Application.csproj" />
     <ProjectReference Include="..\Student.Infrastructure\Student.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\EMIS.BuildingBlocks\EMIS.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\EMIS.EventBus\EMIS.EventBus.csproj" />
   </ItemGroup>
 
 </Project>

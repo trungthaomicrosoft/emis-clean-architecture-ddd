@@ -1,4 +1,5 @@
 using EMIS.BuildingBlocks.MultiTenant;
+using EMIS.EventBus;
 using Serilog;
 using Student.API.Infrastructure;
 using Student.API.Middleware;
@@ -85,6 +86,15 @@ try
     // Add Infrastructure Layer (EF Core, Repositories, UnitOfWork)
     builder.Services.AddInfrastructure(builder.Configuration);
     Log.Information("Infrastructure layer registered");
+
+    // Add Kafka Event Bus for publishing events
+    builder.Services.AddKafkaEventBus(settings =>
+    {
+        settings.BootstrapServers = builder.Configuration["KafkaSettings:BootstrapServers"] ?? "localhost:9092";
+        settings.ClientId = builder.Configuration["KafkaSettings:ClientId"] ?? "student-producer";
+        settings.TopicPrefix = builder.Configuration["KafkaSettings:TopicPrefix"] ?? "emis";
+    });
+    Log.Information("Kafka Event Bus registered");
 
     // Add Health Checks
     builder.Services.AddHealthChecks();

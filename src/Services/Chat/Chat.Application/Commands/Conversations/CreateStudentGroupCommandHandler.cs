@@ -1,11 +1,13 @@
 using AutoMapper;
 using Chat.Application.DTOs;
+using Chat.Application.Interfaces;
 using Chat.Domain.Aggregates;
 using Chat.Domain.Enums;
 using Chat.Domain.Repositories;
 using Chat.Domain.ValueObjects;
 using EMIS.BuildingBlocks.ApiResponse;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace Chat.Application.Commands.Conversations;
 
@@ -16,14 +18,23 @@ public class CreateStudentGroupCommandHandler
     : IRequestHandler<CreateStudentGroupCommand, ApiResponse<ConversationDto>>
 {
     private readonly IConversationRepository _conversationRepository;
+    private readonly IStudentIntegrationService _studentService;
+    private readonly ITeacherIntegrationService _teacherService;
     private readonly IMapper _mapper;
+    private readonly ILogger<CreateStudentGroupCommandHandler> _logger;
 
     public CreateStudentGroupCommandHandler(
         IConversationRepository conversationRepository,
-        IMapper mapper)
+        IStudentIntegrationService studentService,
+        ITeacherIntegrationService teacherService,
+        IMapper mapper,
+        ILogger<CreateStudentGroupCommandHandler> logger)
     {
         _conversationRepository = conversationRepository;
+        _studentService = studentService;
+        _teacherService = teacherService;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<ConversationDto>> Handle(
@@ -43,52 +54,105 @@ public class CreateStudentGroupCommandHandler
                     "Student group already exists for this student", 
                     409);
 
-            // 2. Validate participants
-            if (!request.ParentIds.Any())
-                return ApiResponse<ConversationDto>.ErrorResult(
-                    "At least one parent is required", 
-                    400);
+            // 2. Fetch student information including parents from Student Service
+            _logger.LogInformation(
+                "Fetching student {StudentId} information from Student Service", 
+                request.StudentId);
+            
+            var studentInfo = await _studentService.GetStudentWithParentsAsync(
+                request.TenantId,
+                request.StudentId,
+                cancellationToken);
 
-            if (!request.TeacherIds.Any())
+            if (studentInfo == null)
+            {
+                _logger.LogWarning(
+                    "Student {StudentId} not found in Student Service", 
+                    request.StudentId);
                 return ApiResponse<ConversationDto>.ErrorResult(
-                    "At least one teacher is required", 
-                    400);
+                    "Student not found", 
+                    404);
+            }
 
-            // 3. TODO: Fetch user names from UserService
-            // For now, using placeholder names
-            var teacherName = "Teacher"; // Should fetch from UserService
-            var studentName = "Student"; // Should fetch from Student Service
-            var parents = request.ParentIds
-                .Select((parentId, index) => (parentId, $"Parent{index + 1}"))
+            // 3. Validate that student has at least one parent
+            if (!studentInfo.Parents.Any())
+            {
+                _logger.LogWarning(
+                    "Student {StudentId} has no parents registered", 
+                    request.StudentId);
+                return ApiResponse<ConversationDto>.ErrorResult(
+                    "Student must have at least one parent to create a group conversation", 
+                    400);
+            }
+
+            // 4. Fetch teachers from Teacher Service
+            _logger.LogInformation(
+                "Fetching teachers for class {ClassId} from Teacher Service", 
+                request.ClassId);
+            
+            var teachers = await _teacherService.GetTeachersByClassIdAsync(
+                request.TenantId,
+                request.ClassId,
+                cancellationToken);
+
+            if (!teachers.Any())
+            {
+                _logger.LogWarning(
+                    "No teachers found for class {ClassId}",
+                    request.ClassId);
+                return ApiResponse<ConversationDto>.ErrorResult(
+                    "No teachers assigned to this class",
+                    400);
+            }
+            
+            // 5. Prepare participant data
+            var parents = studentInfo.Parents
+                .Select(p => (p.Id, p.Name))
                 .ToList();
 
-            // 4. Create conversation using factory method
+            // Get primary teacher (prefer head teacher, otherwise first teacher)
+            var primaryTeacher = teachers.FirstOrDefault(t => t.IsHeadTeacher) 
+                ?? teachers.First();
+
+            _logger.LogInformation(
+                "Creating student group for student {StudentName} with {ParentCount} parents and {TeacherCount} teachers",
+                studentInfo.Name, parents.Count, teachers.Count);
+
+            // 6. Create conversation using factory method
             var conversation = Conversation.CreateStudentGroup(
                 request.TenantId,
                 request.StudentId,
-                studentName,
-                request.TeacherIds.First(), // Primary teacher
-                teacherName,
+                studentInfo.Name,
+                primaryTeacher.Id,
+                primaryTeacher.Name,
                 parents);
 
-            // 5. Add additional teachers if any
-            for (int i = 1; i < request.TeacherIds.Count; i++)
+            // 7. Add additional teachers as admins
+            foreach (var teacher in teachers.Where(t => t.Id != primaryTeacher.Id))
             {
                 conversation.AddParticipant(
-                    request.TeacherIds[i], 
-                    $"Teacher{i + 1}", 
+                    teacher.Id, 
+                    teacher.Name, 
                     ParticipantRole.Admin);
             }
 
-            // 6. Save conversation
+            // 8. Save conversation
             await _conversationRepository.AddAsync(conversation, cancellationToken);
 
-            // 7. Map to DTO and return
+            _logger.LogInformation(
+                "Successfully created student group conversation {ConversationId} for student {StudentId}",
+                conversation.Id, request.StudentId);
+
+            // 9. Map to DTO and return
             var conversationDto = _mapper.Map<ConversationDto>(conversation);
             return ApiResponse<ConversationDto>.SuccessResult(conversationDto);
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex,
+                "Failed to create student group for student {StudentId}: {ErrorMessage}",
+                request.StudentId, ex.Message);
+            
             return ApiResponse<ConversationDto>.ErrorResult(
                 $"Failed to create student group: {ex.Message}", 
                 500);

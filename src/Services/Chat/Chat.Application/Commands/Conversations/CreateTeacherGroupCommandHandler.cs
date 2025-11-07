@@ -47,6 +47,8 @@ public class CreateTeacherGroupCommandHandler
             var conversation = Conversation.CreateTeacherGroup(
                 request.TenantId,
                 request.GroupName,
+                request.CreatedBy,
+                "Creator", // TODO: Fetch from UserService
                 teachers);
 
             // 4. Save conversation

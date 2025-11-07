@@ -1,3 +1,4 @@
+using Chat.Application.DTOs;
 using EMIS.BuildingBlocks.ApiResponse;
 using MediatR;
 

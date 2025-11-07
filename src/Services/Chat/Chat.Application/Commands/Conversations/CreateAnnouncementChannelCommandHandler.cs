@@ -50,6 +50,8 @@ public class CreateAnnouncementChannelCommandHandler
             var conversation = Conversation.CreateAnnouncementChannel(
                 request.TenantId,
                 request.ChannelName,
+                request.CreatedBy,
+                "Creator", // TODO: Fetch from UserService
                 admins,
                 parents);
 

@@ -17,6 +17,7 @@
     <ProjectReference Include="..\Student.Domain\Student.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\EMIS.SharedKernel\EMIS.SharedKernel.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\EMIS.BuildingBlocks\EMIS.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\EMIS.EventBus\EMIS.EventBus.csproj" />
   </ItemGroup>
 
 </Project>
