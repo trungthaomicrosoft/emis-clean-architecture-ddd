@@ -18,6 +18,7 @@ public class IdentityDbContext : DbContext, IUnitOfWork
 
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+    public DbSet<Tenant> Tenants { get; set; } = null!; // System-level, NO tenant filter;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,6 +28,7 @@ public class IdentityDbContext : DbContext, IUnitOfWork
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(IdentityDbContext).Assembly);
 
         // Global query filter for multi-tenancy
+        // NOTE: Tenants table does NOT have this filter - it's system-level
         modelBuilder.Entity<User>()
             .HasQueryFilter(u => u.TenantId == _currentTenantId);
 
