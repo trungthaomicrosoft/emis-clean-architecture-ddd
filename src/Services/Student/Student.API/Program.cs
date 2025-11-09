@@ -1,10 +1,14 @@
 using EMIS.BuildingBlocks.MultiTenant;
 using EMIS.EventBus;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Serilog;
 using Student.API.Infrastructure;
 using Student.API.Middleware;
 using Student.Application;
 using Student.Infrastructure;
+using System.Text;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -28,15 +32,40 @@ try
     // Add Swagger/OpenAPI
     builder.Services.AddSwaggerGen(options =>
     {
-        options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+        options.SwaggerDoc("v1", new OpenApiInfo
         {
             Title = "EMIS Student API",
             Version = "v1",
             Description = "API for Student Management Service",
-            Contact = new Microsoft.OpenApi.Models.OpenApiContact
+            Contact = new OpenApiContact
             {
                 Name = "EMIS Team",
                 Email = "support@emis.com"
+            }
+        });
+
+        // Add JWT authentication to Swagger
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token",
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.ApiKey,
+            Scheme = "Bearer"
+        });
+
+        options.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
             }
         });
 
@@ -63,6 +92,35 @@ try
                   .AllowCredentials();
         });
     });
+
+    // Add JWT Authentication
+    var jwtSecret = builder.Configuration["JwtSettings:Secret"] 
+        ?? "YourSuperSecretKeyHere_MinimumLengthIs32Characters!";
+    var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "EMIS.IdentityService";
+    var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "EMIS.Client";
+
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+    builder.Services.AddAuthorization();
+    Log.Information("JWT Authentication configured");
 
     // Add HttpContextAccessor for tenant resolution
     builder.Services.AddHttpContextAccessor();
@@ -112,18 +170,18 @@ try
         app.UseSwaggerUI(c =>
         {
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "EMIS Student API V1");
-            c.RoutePrefix = string.Empty; // Swagger at root
+            c.RoutePrefix = "swagger";
         });
         
-        Log.Information("Swagger UI enabled at: http://localhost:5000");
+        Log.Information("Swagger UI enabled at: http://localhost:5202/swagger");
     }
 
     app.UseHttpsRedirection();
 
     app.UseCors("AllowAll");
 
-    // app.UseAuthentication(); // TODO: Add authentication when Identity Service is ready
-    // app.UseAuthorization();
+    app.UseAuthentication();
+    app.UseAuthorization();
 
     app.MapControllers();
 
@@ -132,7 +190,7 @@ try
     // Log all registered endpoints
     Log.Information("Application started successfully");
     Log.Information("Available endpoints:");
-    Log.Information("  - Swagger UI: /");
+    Log.Information("  - Swagger UI: /swagger");
     Log.Information("  - Health Check: /health");
     Log.Information("  - Students API: /api/students");
 

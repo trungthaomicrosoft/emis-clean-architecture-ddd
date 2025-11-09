@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MySQL Database
   mysql:
@@ -113,26 +111,6 @@ services:
     networks:
       - emis-network
 
-  # RabbitMQ (kept for other services that may need it)
-  rabbitmq:
-    image: rabbitmq:3.12-management
-    container_name: emis-rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: EMISPassword123!
-    ports:
-      - "5672:5672"   # AMQP port
-      - "15672:15672" # Management UI
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - emis-network
-    healthcheck:
-      test: rabbitmq-diagnostics -q ping
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # MinIO (S3-compatible storage)
   minio:
     image: minio/minio:latest
@@ -154,65 +132,28 @@ services:
       timeout: 5s
       retries: 5
 
-  # Elasticsearch (for logging)
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: emis-elasticsearch
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    networks:
-      - emis-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Kibana (for log visualization)
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.0
-    container_name: emis-kibana
-    environment:
-      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
-    ports:
-      - "5601:5601"
-    networks:
-      - emis-network
-    depends_on:
-      - elasticsearch
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # Chat Worker Service (processes internal chat events)
-  chat-worker:
-    build:
-      context: .
-      dockerfile: src/Services/Chat/Chat.Worker/Dockerfile
-    container_name: emis-chat-worker
-    environment:
-      - DOTNET_ENVIRONMENT=Development
-      - MongoDbSettings__ConnectionString=mongodb://admin:EMISPassword123!@mongodb:27017
-      - MongoDbSettings__DatabaseName=emis_chat
-      - KafkaSettings__BootstrapServers=kafka:9092
-      - KafkaSettings__GroupId=emis-chat-worker
-      - KafkaSettings__ClientId=chat-worker-consumer
-      - RedisSettings__ConnectionString=redis:6379,password=EMISPassword123!
-    depends_on:
-      - mongodb
-      - kafka
-      - redis
-    networks:
-      - emis-network
-    restart: unless-stopped
+  # Uncomment when ready to deploy
+  # chat-worker:
+  #   build:
+  #     context: .
+  #     dockerfile: src/Services/Chat/Chat.Worker/Dockerfile
+  #   container_name: emis-chat-worker
+  #   environment:
+  #     - DOTNET_ENVIRONMENT=Development
+  #     - MongoDbSettings__ConnectionString=mongodb://admin:EMISPassword123!@mongodb:27017
+  #     - MongoDbSettings__DatabaseName=emis_chat
+  #     - KafkaSettings__BootstrapServers=kafka:9092
+  #     - KafkaSettings__GroupId=emis-chat-worker
+  #     - KafkaSettings__ClientId=chat-worker-consumer
+  #     - RedisSettings__ConnectionString=redis:6379,password=EMISPassword123!
+  #   depends_on:
+  #     - mongodb
+  #     - kafka
+  #     - redis
+  #   networks:
+  #     - emis-network
+  #   restart: unless-stopped
 
 volumes:
   mysql_data:
@@ -221,9 +162,7 @@ volumes:
   zookeeper_data:
   zookeeper_logs:
   kafka_data:
-  rabbitmq_data:
   minio_data:
-  elasticsearch_data:
 
 networks:
   emis-network:

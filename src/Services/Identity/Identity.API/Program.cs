@@ -125,7 +125,9 @@ builder.Services.AddKafkaConsumer(
         settings.BootstrapServers = builder.Configuration["Kafka:BootstrapServers"] ?? "localhost:9092";
         settings.GroupId = "identity-service-consumer";
         settings.ClientId = "identity-service";
-        settings.Topics = new List<string> { "emis.teacher.teachercreated" };
+        settings.TopicPrefix = builder.Configuration["Kafka:TopicPrefix"] ?? "emis";
+        settings.ServiceName = builder.Configuration["Kafka:ServiceName"] ?? "teacher";
+        settings.DefaultTopicStrategy = builder.Configuration["Kafka:DefaultTopicStrategy"] ?? "service";
     },
     consumer =>
     {

@@ -28,6 +28,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasColumnName("PhoneNumber")
                 .HasMaxLength(20)
                 .IsRequired();
+            
+            // Create composite unique index on TenantId and PhoneNumber
+            phoneNumber.HasIndex(p => new { p.Value })
+                .HasDatabaseName("idx_tenant_phone")
+                .IsUnique();
         });
 
         builder.Property(u => u.Email)
@@ -78,10 +83,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // Indexes
         builder.HasIndex(u => u.TenantId)
             .HasDatabaseName("idx_tenant");
-
-        builder.HasIndex(u => new { u.TenantId, u.PhoneNumber.Value })
-            .HasDatabaseName("idx_tenant_phone")
-            .IsUnique();
 
         builder.HasIndex(u => u.EntityId)
             .HasDatabaseName("idx_entity");

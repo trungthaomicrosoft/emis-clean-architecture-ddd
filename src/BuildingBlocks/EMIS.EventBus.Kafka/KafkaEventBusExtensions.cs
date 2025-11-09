@@ -16,6 +16,7 @@ public static class KafkaEventBusExtensions
         Action<KafkaSettings> configureSettings)
     {
         services.Configure(configureSettings);
+        services.AddSingleton<KafkaTopicResolver>();
         services.AddSingleton<IKafkaEventBus, KafkaEventBus>();
         
         return services;
@@ -27,15 +28,20 @@ public static class KafkaEventBusExtensions
     public static IServiceCollection AddKafkaConsumer(
         this IServiceCollection services,
         Action<KafkaConsumerSettings> configureSettings,
-        Action<KafkaConsumerService> configureSubscriptions)
+        Action<IEventBusConsumer> configureSubscriptions)
     {
         services.Configure(configureSettings);
+        services.AddSingleton<KafkaTopicResolver>();
         services.AddSingleton<KafkaConsumerService>();
+        
+        // Register as IEventBusConsumer abstraction
+        services.AddSingleton<IEventBusConsumer>(provider => provider.GetRequiredService<KafkaConsumerService>());
+        
         services.AddHostedService(provider => provider.GetRequiredService<KafkaConsumerService>());
 
         // Configure subscriptions
         using var serviceProvider = services.BuildServiceProvider();
-        var consumerService = serviceProvider.GetRequiredService<KafkaConsumerService>();
+        var consumerService = serviceProvider.GetRequiredService<IEventBusConsumer>();
         configureSubscriptions(consumerService);
 
         return services;
@@ -44,8 +50,8 @@ public static class KafkaEventBusExtensions
     /// <summary>
     /// Subscribe to an integration event
     /// </summary>
-    public static KafkaConsumerService Subscribe<TEvent, THandler>(
-        this KafkaConsumerService consumer)
+    public static IEventBusConsumer Subscribe<TEvent, THandler>(
+        this IEventBusConsumer consumer)
         where TEvent : IntegrationEvent
         where THandler : IIntegrationEventHandler<TEvent>
     {

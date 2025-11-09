@@ -3,10 +3,12 @@ using EMIS.EventBus;
 namespace Chat.Application.Events;
 
 /// <summary>
-/// Event published when a text message is sent
-/// Will be processed asynchronously by background worker
+/// Event published when a text message is sent.
+/// Will be processed asynchronously by background worker.
+/// Implements IOrderedEvent to ensure messages in the same conversation
+/// are processed in order.
 /// </summary>
-public class MessageSentEvent : IntegrationEvent
+public class MessageSentEvent : IntegrationEvent, IOrderedEvent
 {
     public Guid MessageId { get; set; }
     public Guid ConversationId { get; set; }
@@ -48,6 +50,12 @@ public class MessageSentEvent : IntegrationEvent
         SentAt = sentAt;
         RecipientUserIds = recipientUserIds;
     }
+
+    /// <summary>
+    /// Returns ConversationId as ordering key to ensure messages
+    /// in the same conversation are processed sequentially
+    /// </summary>
+    public string GetOrderingKey() => ConversationId.ToString();
 }
 
 /// <summary>

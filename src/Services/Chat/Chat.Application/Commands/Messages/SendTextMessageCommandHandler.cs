@@ -20,14 +20,14 @@ public class SendTextMessageCommandHandler
 {
     private readonly IConversationRepository _conversationRepository;
     private readonly ICacheService _cacheService;
-    private readonly IKafkaEventBus _eventBus;
+    private readonly IEventBus _eventBus;
     private readonly IMapper _mapper;
     private readonly ILogger<SendTextMessageCommandHandler> _logger;
 
     public SendTextMessageCommandHandler(
         IConversationRepository conversationRepository,
         ICacheService cacheService,
-        IKafkaEventBus eventBus,
+        IEventBus eventBus,
         IMapper mapper,
         ILogger<SendTextMessageCommandHandler> logger)
     {

@@ -24,7 +24,7 @@ public class CreateStudentCommandHandler : IRequestHandler<CreateStudentCommand,
     private readonly IClassRepository _classRepository;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
-    private readonly IKafkaEventBus _eventBus;
+    private readonly IEventBus _eventBus;
     private readonly ILogger<CreateStudentCommandHandler> _logger;
 
     public CreateStudentCommandHandler(
@@ -32,7 +32,7 @@ public class CreateStudentCommandHandler : IRequestHandler<CreateStudentCommand,
         IClassRepository classRepository,
         ITenantContext tenantContext,
         IMapper mapper,
-        IKafkaEventBus eventBus,
+        IEventBus eventBus,
         ILogger<CreateStudentCommandHandler> logger)
     {
         _studentRepository = studentRepository;

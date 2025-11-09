@@ -1,6 +1,7 @@
 using AutoMapper;
 using EMIS.BuildingBlocks.ApiResponse;
 using EMIS.BuildingBlocks.Exceptions;
+using EMIS.BuildingBlocks.MultiTenant;
 using EMIS.EventBus;
 using EMIS.EventBus.IntegrationEvents;
 using EMIS.SharedKernel;
@@ -19,19 +20,22 @@ public class CreateTeacherCommandHandler
 {
     private readonly ITeacherRepository _teacherRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
-    private readonly IKafkaEventBus _eventBus;
     private readonly ILogger<CreateTeacherCommandHandler> _logger;
+    private readonly IEventBus _eventBus;
 
     public CreateTeacherCommandHandler(
         ITeacherRepository teacherRepository,
         IUnitOfWork unitOfWork,
+        ITenantContext tenantContext,
         IMapper mapper,
-        IKafkaEventBus eventBus,
+        IEventBus eventBus,
         ILogger<CreateTeacherCommandHandler> logger)
     {
         _teacherRepository = teacherRepository;
         _unitOfWork = unitOfWork;
+        _tenantContext = tenantContext;
         _mapper = mapper;
         _eventBus = eventBus;
         _logger = logger;

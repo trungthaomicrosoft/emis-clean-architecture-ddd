@@ -27,6 +27,7 @@
     <ProjectReference Include="../Identity.Infrastructure/Identity.Infrastructure.csproj" />
     <ProjectReference Include="../../../BuildingBlocks/EMIS.SharedKernel/EMIS.SharedKernel.csproj" />
     <ProjectReference Include="../../../BuildingBlocks/EMIS.BuildingBlocks/EMIS.BuildingBlocks.csproj" />
+    <ProjectReference Include="../../../BuildingBlocks/EMIS.EventBus.Kafka/EMIS.EventBus.Kafka.csproj" />
   </ItemGroup>
 
 </Project>

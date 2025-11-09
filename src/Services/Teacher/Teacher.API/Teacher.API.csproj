@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.9" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -23,6 +24,7 @@
     <ProjectReference Include="..\Teacher.Application\Teacher.Application.csproj" />
     <ProjectReference Include="..\Teacher.Infrastructure\Teacher.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\EMIS.BuildingBlocks\EMIS.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\EMIS.EventBus.Kafka\EMIS.EventBus.Kafka.csproj" />
   </ItemGroup>
 
 </Project>
