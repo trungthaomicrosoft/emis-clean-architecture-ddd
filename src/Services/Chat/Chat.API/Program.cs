@@ -135,7 +135,7 @@ try
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddIntegrationServices(builder.Configuration);
 
-    // Add Kafka Consumer for consuming integration events
+    // Add Kafka Consumer for consuming integration events from other services
     builder.Services.AddKafkaConsumer(
         settings =>
         {
@@ -143,17 +143,13 @@ try
             settings.GroupId = builder.Configuration["KafkaSettings:GroupId"] ?? "emis-chat-service";
             settings.ClientId = builder.Configuration["KafkaSettings:ClientId"] ?? "chat-consumer";
             settings.Topics = builder.Configuration.GetSection("KafkaSettings:Topics").Get<List<string>>() 
-                ?? new List<string> { "emis.student.created", "emis.message.sent" };
+                ?? new List<string> { "emis.student.created" };
         },
         consumer =>
         {
-            // Subscribe to StudentCreatedIntegrationEvent
+            // Subscribe to StudentCreatedIntegrationEvent from Student Service
             consumer.Subscribe<StudentCreatedIntegrationEvent, 
                 Chat.Application.IntegrationEvents.Handlers.StudentCreatedIntegrationEventHandler>();
-            
-            // Subscribe to MessageSentEvent (internal chat events)
-            consumer.Subscribe<MessageSentEvent,
-                Chat.Application.Events.Handlers.MessageSentEventHandler>();
         });
 
     // Add Kafka Producer for publishing events

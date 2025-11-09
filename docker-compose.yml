@@ -192,6 +192,28 @@ services:
       timeout: 5s
       retries: 5
 
+  # Chat Worker Service (processes internal chat events)
+  chat-worker:
+    build:
+      context: .
+      dockerfile: src/Services/Chat/Chat.Worker/Dockerfile
+    container_name: emis-chat-worker
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - MongoDbSettings__ConnectionString=mongodb://admin:EMISPassword123!@mongodb:27017
+      - MongoDbSettings__DatabaseName=emis_chat
+      - KafkaSettings__BootstrapServers=kafka:9092
+      - KafkaSettings__GroupId=emis-chat-worker
+      - KafkaSettings__ClientId=chat-worker-consumer
+      - RedisSettings__ConnectionString=redis:6379,password=EMISPassword123!
+    depends_on:
+      - mongodb
+      - kafka
+      - redis
+    networks:
+      - emis-network
+    restart: unless-stopped
+
 volumes:
   mysql_data:
   mongodb_data:
