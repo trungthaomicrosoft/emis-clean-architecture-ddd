@@ -13,11 +13,11 @@ public class KafkaEventBus : IKafkaEventBus, IEventBus, IDisposable
 {
     private readonly IProducer<string, string> _producer;
     private readonly ILogger<KafkaEventBus> _logger;
-    private readonly KafkaSettings _settings;
+    private readonly KafkaProducerSettings _settings;
     private readonly KafkaTopicResolver _topicResolver;
 
     public KafkaEventBus(
-        IOptions<KafkaSettings> settings,
+        IOptions<KafkaProducerSettings> settings,
         ILogger<KafkaEventBus> logger,
         KafkaTopicResolver topicResolver)
     {
@@ -25,19 +25,30 @@ public class KafkaEventBus : IKafkaEventBus, IEventBus, IDisposable
         _logger = logger;
         _topicResolver = topicResolver;
 
+        // Parse Acks enum from string configuration
+        var acksValue = _settings.Acks.ToLowerInvariant() switch
+        {
+            "all" => Acks.All,
+            "leader" => Acks.Leader,
+            "none" => Acks.None,
+            _ => Acks.All
+        };
+
         var config = new ProducerConfig
         {
             BootstrapServers = _settings.BootstrapServers,
             ClientId = _settings.ClientId,
-            Acks = Acks.All, // Wait for all replicas
-            EnableIdempotence = true, // Prevent duplicate messages
-            MessageTimeoutMs = 30000,
-            RequestTimeoutMs = 30000
+            Acks = acksValue,
+            EnableIdempotence = _settings.EnableIdempotence,
+            MessageTimeoutMs = _settings.MessageTimeoutMs,
+            RequestTimeoutMs = _settings.RequestTimeoutMs
         };
 
         _producer = new ProducerBuilder<string, string>(config).Build();
         
-        _logger.LogInformation("Kafka Producer initialized with servers: {Servers}", _settings.BootstrapServers);
+        _logger.LogInformation(
+            "Kafka Producer initialized. Servers: {Servers}, ClientId: {ClientId}, Acks: {Acks}, Idempotence: {Idempotence}", 
+            _settings.BootstrapServers, _settings.ClientId, _settings.Acks, _settings.EnableIdempotence);
     }
 
     public async Task PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken = default) 
@@ -117,32 +128,4 @@ public class KafkaEventBus : IKafkaEventBus, IEventBus, IDisposable
         _producer?.Flush(TimeSpan.FromSeconds(10));
         _producer?.Dispose();
     }
-}
-
-public class KafkaSettings
-{
-    public string BootstrapServers { get; set; } = "localhost:9092";
-    public string ClientId { get; set; } = "emis-producer";
-    public string TopicPrefix { get; set; } = "emis";
-    
-    /// <summary>
-    /// Topic routing strategy: "service" (default) or "event"
-    /// - "service": Events grouped by service (e.g., emis.chat, emis.student)
-    /// - "event": One topic per event type (e.g., emis.messagesent)
-    /// </summary>
-    public string DefaultTopicStrategy { get; set; } = "service";
-    
-    /// <summary>
-    /// Optional: Override topic name for specific events
-    /// Key: Event type name (e.g., "MessageSentEvent")
-    /// Value: Topic name (e.g., "emis.chat.messages")
-    /// Use this for high-volume events that need separate topics
-    /// </summary>
-    public Dictionary<string, string> EventTopicMappings { get; set; } = new();
-    
-    /// <summary>
-    /// Service name for service-based topic routing
-    /// Auto-detected from ClientId if not set (e.g., "chat-producer" -> "chat")
-    /// </summary>
-    public string? ServiceName { get; set; }
 }

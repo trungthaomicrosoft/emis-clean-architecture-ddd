@@ -55,22 +55,32 @@ public class KafkaConsumerService : BackgroundService, IEventBusConsumer
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Parse AutoOffsetReset from string configuration
+        var autoOffsetReset = _settings.AutoOffsetReset.ToLowerInvariant() switch
+        {
+            "earliest" => AutoOffsetReset.Earliest,
+            "latest" => AutoOffsetReset.Latest,
+            _ => AutoOffsetReset.Earliest
+        };
+
         var config = new ConsumerConfig
         {
             BootstrapServers = _settings.BootstrapServers,
             GroupId = _settings.GroupId,
             ClientId = _settings.ClientId,
-            AutoOffsetReset = AutoOffsetReset.Earliest,
-            EnableAutoCommit = false, // Manual commit for reliability
-            EnableAutoOffsetStore = false
+            AutoOffsetReset = autoOffsetReset,
+            EnableAutoCommit = _settings.EnableAutoCommit,
+            EnableAutoOffsetStore = _settings.EnableAutoOffsetStore
         };
 
         _consumer = new ConsumerBuilder<string, string>(config).Build();
         
         // Subscribe to topics: use auto-resolved topics from Subscribe<> calls, or fallback to manual config
+#pragma warning disable CS0618 // Type or member is obsolete (backward compatibility)
         var topicsToSubscribe = _subscribedTopics.Any() 
             ? _subscribedTopics.ToList() 
             : _settings.Topics;
+#pragma warning restore CS0618
         
         if (!topicsToSubscribe.Any())
         {
@@ -193,43 +203,4 @@ public class KafkaConsumerService : BackgroundService, IEventBusConsumer
         _consumer?.Dispose();
         base.Dispose();
     }
-}
-
-public class KafkaConsumerSettings
-{
-    public string BootstrapServers { get; set; } = "localhost:9092";
-    public string GroupId { get; set; } = "emis-consumer-group";
-    public string ClientId { get; set; } = "emis-consumer";
-    
-    /// <summary>
-    /// Topic prefix for all Kafka topics (e.g., "emis")
-    /// </summary>
-    public string TopicPrefix { get; set; } = "emis";
-    
-    /// <summary>
-    /// Topic routing strategy: "service" (default) or "event"
-    /// - "service": Events grouped by service (e.g., emis.chat, emis.student)
-    /// - "event": One topic per event type (e.g., emis.messagesent)
-    /// </summary>
-    public string DefaultTopicStrategy { get; set; } = "service";
-    
-    /// <summary>
-    /// Optional: Override topic name for specific events
-    /// Key: Event type name (e.g., "MessageSentEvent")
-    /// Value: Topic name (e.g., "emis.chat.messages")
-    /// Use this for high-volume events that need separate topics
-    /// </summary>
-    public Dictionary<string, string> EventTopicMappings { get; set; } = new();
-    
-    /// <summary>
-    /// Service name for service-based topic routing
-    /// Auto-detected from ClientId if not set (e.g., "chat-consumer" -> "chat")
-    /// </summary>
-    public string? ServiceName { get; set; }
-    
-    /// <summary>
-    /// Manual topic list (DEPRECATED: use auto-resolution via Subscribe<TEvent, THandler>)
-    /// Only used as fallback when no events are subscribed
-    /// </summary>
-    public List<string> Topics { get; set; } = new();
 }
